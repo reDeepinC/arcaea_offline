@@ -1,239 +1,203 @@
+const B30_SIZE = 30;
+const OVERFLOW_SIZE = 30;
+const BESTS_LIMIT = B30_SIZE + OVERFLOW_SIZE;
+
+const CLASS_BORDER = {
+    Past: '#0077ff',
+    Present: '#01b73a',
+    Future: '#B056FF',
+    Beyond: '#db004f',
+    Eternal: '#5f63ff',
+};
+
+function formatScore(score) {
+    const digits = String(Math.floor(Number(score) || 0)).padStart(8, '0').slice(-8);
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+}
+
+function illustrationUrl(id, songClass) {
+    return songClass === 'Beyond' ? `${id}_byd` : id;
+}
+
+function createBestCard(entry, rank) {
+    const card = document.createElement('div');
+    card.className = 'best-card';
+    const borderColor = CLASS_BORDER[entry.class] || CLASS_BORDER.Future;
+    card.style.borderColor = borderColor;
+
+    const name = document.createElement('div');
+    name.className = 'best-card-name';
+    name.textContent = `#${rank} ${entry.name}`;
+
+    const img = document.createElement('img');
+    img.className = 'best-card-cover';
+    img.src = `/assets/illustrations/${illustrationUrl(entry.id, entry.class)}.jpg`;
+    img.alt = entry.name;
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'best-card-score';
+    scoreEl.textContent = formatScore(entry.score);
+
+    const constantEl = document.createElement('div');
+    constantEl.className = 'best-card-constant';
+    constantEl.textContent = parseFloat(entry.difficulty).toFixed(1);
+
+    const ptEl = document.createElement('div');
+    ptEl.className = 'best-card-pt';
+    ptEl.textContent = parseFloat(entry.rating).toFixed(3);
+
+    card.append(name, img, scoreEl, constantEl, ptEl);
+    return card;
+}
+
+function fillBestsBoard(board, entries, startRank) {
+    board.innerHTML = '';
+    let row = null;
+    entries.forEach((entry, i) => {
+        if (i % 15 === 0) {
+            row = document.createElement('div');
+            row.className = 'bests-row';
+            board.appendChild(row);
+        }
+        row.appendChild(createBestCard(entry, startRank + i));
+    });
+}
+
 function get_username() {
-    fetch('/username',{
-        method: 'GET'
-    }).then(response => response.json())
-    .then(data => {
-        document.querySelector('.username').textContent = data.username;
-    }).catch(error => console.log(error));
+    fetch('/username', {
+        method: 'GET',
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            document.querySelector('.username').textContent = data.username;
+        })
+        .catch(() => {});
 }
+
 function get_bests() {
-    fetch('/get_bests',{
-        method: 'GET'
-    }).then(response => response.json())
-    .then(data => {
-        console.log(data);
-        let best30 = 0, recent10 = 0;
-        let tr = document.querySelector('tr');
-        for (let i = 0; i < Math.min(data.length, 30); i++) {
-            if (data[i].rating == 0){
-                break;
+    fetch(`/get_bests?limit=${BESTS_LIMIT}`, {
+        method: 'GET',
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            const valid = [];
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].rating == 0) break;
+                valid.push(data[i]);
             }
-            best30 += data[i].rating;
-            if (i < 10){
-                recent10 += data[i].rating;
-            }
-            let th = document.createElement('th');
-            style = "";
-            let div1 = document.createElement('div');
-            let div2 = document.createElement('div');
-            div1.innerHTML = `#${i+1} ${data[i].name}`;
-            div1.classList.add('song-name');
-            div1.style.textAlign = "left";
-            switch (data[i].class) {
-                case "Past":{
-                    div1.style.background = `linear-gradient(to right, #0077ff, #000000)`;
-                    break;
-                }
-                case "Present":{
-                    div1.style.background = `linear-gradient(to right, #01b73a, #000000)`;
-                    break;
-                }
-                case "Future":{
-                    div1.style.background = `linear-gradient(to right, #B056FF, #000000)`;
-                    break;
-                }
-                case "Beyond":{
-                    div1.style.background = `linear-gradient(to right, #db004f, #000000)`;
-                    break;
-                }
-                case "Eternal":{
-                    div1.style.background = `linear-gradient(to right, #5f63ff, #000000)`;
-                    break;
-                }
-                default:{
-                    div1.style.background = `linear-gradient(to right, #B056FF, #000000)`;
-                    break;
-                }
-            }
-            div2.classList.add('layer');
-            var url = data[i].id;
-            if(data[i].class == 'Beyond'){
-                url = `${data[i].id}_byd`;
-            }
-            div2.innerHTML = `
-                <div class="song-illustration">
-                    <img src="/assets/illustrations/${url}.jpg" alt="">
-                </div>
-                <div class="song-score">
-                    <div class="score">${data[i].score}</div>
-                    <div class="rating">${data[i].difficulty}→${data[i].rating}</div>
-                </div>
-            `;
-            th.appendChild(div1);
-            th.appendChild(div2);
-            tr.appendChild(th);
-        }
-        
-        var table_overflow = document.createElement('table');
-        var tr_overflow = document.createElement('tr');
-        table_overflow.appendChild(tr_overflow);
-        document.querySelector('main').insertAdjacentElement('beforeend', table_overflow);
-        for (let i = 30; i < data.length; i++) {
-            if (data[i].rating == 0){
-                break;
-            }
-            let th = document.createElement('th');
-            style = "";
-            let div1 = document.createElement('div');
-            let div2 = document.createElement('div');
-            div1.innerHTML = `#${i+1} ${data[i].name}`;
-            div1.classList.add('song-name');
-            div1.style.textAlign = "left";
-            switch (data[i].class) {
-                case "Past":{
-                    div1.style.background = `linear-gradient(to right, #0077ff, #000000)`;
-                    break;
-                }
-                case "Present":{
-                    div1.style.background = `linear-gradient(to right, #01b73a, #000000)`;
-                    break;
-                }
-                case "Future":{
-                    div1.style.background = `linear-gradient(to right, #B056FF, #000000)`;
-                    break;
-                }
-                case "Beyond":{
-                    div1.style.background = `linear-gradient(to right, #db004f, #000000)`;
-                    break;
-                }
-                case "Eternal":{
-                    div1.style.background = `linear-gradient(to right, #5f63ff, #000000)`;
-                    break;
-                }
-                default:{
-                    div1.style.background = `linear-gradient(to right, #B056FF, #000000)`;
-                    break;
-                }
-            }
-            div2.classList.add('layer');
-            var url = data[i].id;
-            if(data[i].class == 'Beyond'){
-                url = `${data[i].id}_byd`;
-            }
-            div2.innerHTML = `
-                <div class="song-illustration">
-                    <img src="/assets/illustrations/${url}.jpg" alt="">
-                </div>
-                <div class="song-score">
-                    <div class="score">${data[i].score}</div>
-                    <div class="rating">${data[i].difficulty}→${data[i].rating}</div>
-                </div>
-            `;
-            th.appendChild(div1);
-            th.appendChild(div2);
-            tr_overflow.appendChild(th);
-        }
-        best30 = (best30/30).toFixed(3);
-        recent10 = (recent10/10).toFixed(3);
-        document.querySelector('.best-30').textContent = `Best 30: ${best30}`;
-        document.querySelector('.recent-10').textContent = `Recent 10: ${recent10}`;
-        document.querySelector('.max-potential').textContent = `Max Potential: ${(best30*0.75 + recent10*0.25).toFixed(3)}`;
-        let maxptt = best30*0.75 + recent10*0.25;
-        let p = document.createElement('p');
-        let p1 = document.createElement('p');
-        let p2 = document.createElement('p');
-        p.style.display = 'flex';
-        p.style.alignItems = 'end';
-        p.style.flexDirection = 'row';
-        p1.textContent = `${maxptt.toString().slice(0, maxptt.toString().indexOf('.'))}.`;
-        p1.textContent = p1.textContent == "." ? "0." : p1.textContent;
-        p1.style.webkitTextStroke = "0.3px black";
-        p2.textContent = maxptt.toString().slice(maxptt.toString().indexOf('.')+1, maxptt.toString().indexOf('.')+ 3);
-        p2.style.webkitTextStroke = "0.2px black";
-        p1.style.fontSize = "20px";
-        p2.style.fontSize = "17px";
-        p1.style.margin = '0px';
-        p1.style.padding = '0px';
-        p1.style.position = 'relative';
-        p1.style.bottom = '1px'
-        p2.style.position = 'relative';
-        p2.style.bottom = '2px'
-        p2.style.margin = '0px';
-        p2.style.padding = '0px';
-        p.appendChild(p1);
-        p.appendChild(p2);
-        document.querySelector('.rank-rating').appendChild(p);
-        if (maxptt >= 13.00){
-            document.querySelector('.rank-img').src = "/assets/others/rating_7.png";
-        } else if (maxptt >= 12.50){
-            document.querySelector('.rank-img').src = "/assets/others/rating_6.png";
-        } else if (maxptt >= 12.00){
-            document.querySelector('.rank-img').src = "/assets/others/rating_5.png";
-        } else if (maxptt >= 11.00){
-            document.querySelector('.rank-img').src = "/assets/others/rating_4.png";
-        } else if (maxptt >= 10.00){
-            document.querySelector('.rank-img').src = "/assets/others/rating_3.png";
-        } else if (maxptt >= 7.00){
-            document.querySelector('.rank-img').src = "/assets/others/rating_2.png";
-        } else if (maxptt >= 3.50){
-            document.querySelector('.rank-img').src = "/assets/others/rating_1.png";
-        } else {
-            document.querySelector('.rank-img').src = "/assets/others/rating_0.png";
-        }
-    }).catch(error => console.log(error));
+
+            let best30 = 0;
+            let recent10 = 0;
+            const best30Entries = valid.slice(0, B30_SIZE);
+            best30Entries.forEach((entry, i) => {
+                best30 += entry.rating;
+                if (i < 10) recent10 += entry.rating;
+            });
+
+            fillBestsBoard(document.getElementById('bests-board'), best30Entries, 1);
+
+            const overflowEntries = valid.slice(B30_SIZE, B30_SIZE + OVERFLOW_SIZE);
+            fillBestsBoard(document.getElementById('overflow-board'), overflowEntries, B30_SIZE + 1);
+
+            best30 = (best30 / B30_SIZE).toFixed(3);
+            recent10 = (recent10 / 10).toFixed(3);
+            document.querySelector('.best-30').textContent = `Best 30: ${best30}`;
+            document.querySelector('.recent-10').textContent = `Recent 10: ${recent10}`;
+            document.querySelector('.max-potential').textContent = `Max Potential: ${(best30 * 0.75 + recent10 * 0.25).toFixed(3)}`;
+
+            const maxptt = best30 * 0.75 + recent10 * 0.25;
+            const rankRating = document.querySelector('.rank-rating');
+            rankRating.innerHTML = '';
+            const p = document.createElement('p');
+            const p1 = document.createElement('p');
+            const p2 = document.createElement('p');
+            p.style.display = 'flex';
+            p.style.alignItems = 'end';
+            p.style.flexDirection = 'row';
+            p1.textContent = `${maxptt.toString().slice(0, maxptt.toString().indexOf('.'))}.`;
+            p1.textContent = p1.textContent == '.' ? '0.' : p1.textContent;
+            p1.style.webkitTextStroke = '0.3px black';
+            p2.textContent = maxptt
+                .toString()
+                .slice(maxptt.toString().indexOf('.') + 1, maxptt.toString().indexOf('.') + 3);
+            p2.style.webkitTextStroke = '0.2px black';
+            p1.style.fontSize = '20px';
+            p2.style.fontSize = '17px';
+            p1.style.margin = '0px';
+            p1.style.padding = '0px';
+            p1.style.position = 'relative';
+            p1.style.bottom = '1px';
+            p2.style.position = 'relative';
+            p2.style.bottom = '2px';
+            p2.style.margin = '0px';
+            p2.style.padding = '0px';
+            p.appendChild(p1);
+            p.appendChild(p2);
+            rankRating.appendChild(p);
+
+            const rankImg = document.querySelector('.rank-img');
+            if (maxptt >= 13.0) rankImg.src = '/assets/others/rating_7.png';
+            else if (maxptt >= 12.5) rankImg.src = '/assets/others/rating_6.png';
+            else if (maxptt >= 12.0) rankImg.src = '/assets/others/rating_5.png';
+            else if (maxptt >= 11.0) rankImg.src = '/assets/others/rating_4.png';
+            else if (maxptt >= 10.0) rankImg.src = '/assets/others/rating_3.png';
+            else if (maxptt >= 7.0) rankImg.src = '/assets/others/rating_2.png';
+            else if (maxptt >= 3.5) rankImg.src = '/assets/others/rating_1.png';
+            else rankImg.src = '/assets/others/rating_0.png';
+        })
+        .catch((error) => console.log(error));
 }
+
 function avatar_list_toggle() {
-    let avatar_list = document.querySelector('.avatar-list');
+    const avatar_list = document.querySelector('.avatar-list');
     if (avatar_list.style.opacity == 1) {
         avatar_list.style.opacity = 0;
         avatar_list.style.zIndex = -10;
     } else {
         avatar_list.style.opacity = 1;
         avatar_list.style.zIndex = 1000;
-        fetch('/avatar_list',{
-            method: 'GET'
-        }).then(response => response.json())
-        .then(data => {
-            console.log(data);
-            let avatar_list = document.querySelector('.avatar-list');
-            for (let i = 0; i < data.length; i++) {
-                if (data[i]=='.gitkeep'){
-                    continue;
+        fetch('/avatar_list', {
+            method: 'GET',
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                const avatar_list = document.querySelector('.avatar-list');
+                avatar_list.innerHTML = '';
+                for (let i = 0; i < data.length; i++) {
+                    if (data[i] == '.gitkeep') continue;
+                    const img = document.createElement('img');
+                    img.src = '/assets/avatars/' + data[i];
+                    img.onclick = function () {
+                        avatar_list.style.opacity = 0;
+                        avatar_list.style.zIndex = -10;
+                        document.querySelector('.avatar img').src = this.src;
+                        fetch('/set_avatar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ avatar: data[i] }),
+                        }).catch((error) => console.log(error));
+                    };
+                    avatar_list.appendChild(img);
                 }
-                let img = document.createElement('img');
-                img.src = "/assets/avatars/"+data[i];
-                img.onclick = function() {
-                    avatar_list.style.opacity = 0;
-                    avatar_list.style.zIndex = -10;
-                    document.querySelector('.avatar img').src = this.src;
-                    fetch('/set_avatar',{
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            avatar: data[i]
-                        })
-                    }).catch(error => console.log(error));
-                }
-                avatar_list.appendChild(img);
-            }
-        });
+            });
     }
 }
+
 function get_avatar() {
-    fetch('/get_avatar',{
-        method: 'GET'
-    }).then(response => response.json())
-    .then(data => {
-        console.log(data);
-        if (data.avatar == 'default.png'){
-            document.querySelector('.avatar img').src = "/assets/others/"+data.avatar;
-        } else {
-            document.querySelector('.avatar img').src = "/assets/avatars/"+data.avatar;
-        }
-    }).catch(error => console.log(error));
+    fetch('/get_avatar', {
+        method: 'GET',
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.avatar == 'default.png') {
+                document.querySelector('.avatar img').src = '/assets/others/' + data.avatar;
+            } else {
+                document.querySelector('.avatar img').src = '/assets/avatars/' + data.avatar;
+            }
+        })
+        .catch((error) => console.log(error));
 }
+
 get_username();
 get_avatar();
 get_bests();

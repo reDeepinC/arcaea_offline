@@ -117,10 +117,71 @@
         align-items: center;
         justify-content: space-around;
     }
-    .layer img{
+.layer img{
         width: 55px;
-        border-radius: 50%;
-    }
+        border-radius: 0;
+}
+-------
+
+SEARCH
+<th>
+            <div class="song-name">
+                #${i+1} ${data[i].name}
+            </div>
+            <div class="layer">
+                <div class="song-illustration">
+                    <img src="/assets/illustrations/${data[i].id}.jpg" alt="">
+                </div>
+                <div class="song-score">
+                    <div class="score">${data[i].score}</div>
+                    <div class="rating">${data[i].difficulty}->${data[i].rating}</div>
+                </div>
+            </div>
+<th style="border: 2px solid ${{
+    const colorMap = {
+        "Past":"#0077ff",
+        "Present":"#01b73a",
+        "Future":"#B056FF",
+        "Beyond":"#db004f",
+        "Eternal":"#5f63ff"
+    };
+    const col = colorMap[data[i].class]||"#B056FF";
+    return col;
+}};">
+    <div class="song-name" style="background: ${{
+        const bgMap = {
+            "Past":"linear-gradient(to right, #0077ff, #000000)",
+            "Present":"linear-gradient(to right, #01b73a, #000000)",
+            "Future":"linear-gradient(to right, #B056FF, #000000)",
+            "Beyond":"linear-gradient(to right, #db004f, #000000)",
+            "Eternal":"linear-gradient(to right, #5f63ff, #000000)"
+        };
+        return bgMap[data[i].class]||"linear-gradient(to right, #B056FF, #000000)";
+    }};">#${i+1} ${data[i].name}</div>
+    <div class="layer">
+        <div class="song-illustration">
+            <img src="/assets/illustrations/${data[i].id}.jpg" alt="">
+        </div>
+        <div class="song-score">
+            <div class="score">${{
+                const s = data[i].score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+                return s.padStart(8, '0');
+            }}</div>
+            <div class="rating">${data[i].difficulty}->${{
+                const r = parseFloat(data[i].rating).toFixed(3);
+                return r;
+            }}</div>
+            <div class="constant">${{
+                const c = parseFloat(data[i].constant).toFixed(1);
+                return c;
+            }}</div>
+            <div class="pt">${{
+                const pt = parseFloat(data[i].pt).toFixed(3);
+                return pt;
+            }}</div>
+        </div>
+    </div>
+</th>
     .layer .score{
         font-size: 20px;
     }

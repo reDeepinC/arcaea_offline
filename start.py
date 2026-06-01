@@ -17,6 +17,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 init(autoreset=True)
 curdir = os.path.dirname(os.path.abspath(__file__))
+BEST30_COUNT = 30
+OVERFLOW_COUNT = 30
+BESTS_RETURN_LIMIT = int(os.getenv('BESTS_RETURN_LIMIT', BEST30_COUNT + OVERFLOW_COUNT))
 # Default user for sessions (used after removing authentication)
 # Determine default user: use environment variable if set,
 # otherwise fall back to the first existing username in the database
@@ -206,7 +209,11 @@ def get_bests():
         })
     data.sort(key=lambda x: x['rating'], reverse=True)
     conn.close()
-    return jsonify(data[:50])
+    limit = request.args.get('limit', type=int)
+    if limit is None:
+        limit = BESTS_RETURN_LIMIT
+    limit = max(1, min(limit, len(data)))
+    return jsonify(data[:limit])
 
 @app.route('/chat', methods=['POST'])
 def chat():

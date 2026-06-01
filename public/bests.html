@@ -23,26 +23,6 @@
         width: 100%;
         height: 100%;
     }
-    main table{
-        position: relative;
-        width: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-    main table th {
-        padding: 15px;
-        margin: 0px;
-    }
-    main table tr{
-        margin: 0px;
-    }
-    main table th {
-        padding: 10px;
-    }
-    main table input {
-        padding: 5px;
-        width: 100px;
-        border-radius: 6px;
-    }
     .user-info {
         display: flex;
         flex-direction: row;
@@ -91,53 +71,59 @@
         padding-left: 5px;
         margin: 3px;
     }
-    main table{
+    .bests-board {
+        width: 100%;
+        padding: 0 12px 16px;
+        box-sizing: border-box;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+    .bests-row {
+        display: grid;
+        grid-template-columns: repeat(15, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .best-card {
         display: flex;
         flex-direction: column;
-        align-items: center;
-    }
-    main table tr{
-        display: flex;
-        flex-direction: row;
-        justify-content: space-evenly;
-        flex-wrap: wrap;
-    }
-    main table th{
-        display: flex;
-        flex-direction: column;
-        border: 1px solid white;
-        margin: 10px;
-        width: 175px;
-        white-space: nowrap;
+        align-items: stretch;
+        box-sizing: border-box;
+        min-width: 0;
+        padding: 6px;
+        background: rgba(0, 0, 0, 0.65);
+        border: 6px solid #B056FF;
+        border-radius: 4px;
         color: rgb(220, 220, 220);
     }
-    .layer {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-around;
-    }
-    .layer img{
-        width: 55px;
-        border-radius: 50%;
-    }
-    .layer .score{
-        font-size: 20px;
-    }
-    .layer .rating{
-        margin-top: 3px;
+    .best-card-name {
+        font-size: 14.3px;
+        line-height: 1.25;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
         white-space: nowrap;
+        text-align: center;
     }
-    .song-name {
-        margin-bottom: 5px;
-        overflow-x: hidden;
-        padding-left: 4px;
-        border-radius: 10px;
+    .best-card-cover {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        border-radius: 0;
+        display: block;
+        margin-bottom: 4px;
     }
-    .song-score {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+    .best-card-score {
+        font-size: 16.9px;
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+    }
+    .best-card-constant,
+    .best-card-pt {
+        font-size: 15.6px;
+        text-align: center;
+        line-height: 1.35;
     }
     .max-potential,.recent-10,.best-30 {
         white-space: nowrap;
@@ -198,6 +184,10 @@
     }
     .overflow {
         background-color: rgba(0, 0, 0, 0.5);
+        margin-top: 8px;
+    }
+    .overflow h2 {
+        margin: 12px 0 8px;
     }
 </style>
 <body>
@@ -218,12 +208,10 @@
                 <div class="recent-10">Recent 10</div>
             </div>
         </div>
-        <table>
-            <tr>
-            </tr>
-        </table>
+        <div class="bests-board" id="bests-board"></div>
         <div class="overflow" align="center">
             <h2>OVERFLOW</h2>
+            <div class="bests-board" id="overflow-board"></div>
         </div>
     </main>
 </body>
