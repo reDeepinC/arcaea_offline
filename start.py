@@ -138,13 +138,10 @@ def serve_favicon():
 
 # Username endpoint removed – authentication disabled.
 
-@app.route('/get_chart', methods=['POST'])
-def get_chart():
-    rows = []
-    # Use default user since authentication is removed
+def _build_chart_data(username):
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
-    cursor.execute('''SELECT * from songs WHERE username = ?''', (default_user,))
+    cursor.execute('''SELECT * from songs WHERE username = ?''', (username,))
     rows = cursor.fetchall()
     conn.close()
     data = []
@@ -155,7 +152,7 @@ def get_chart():
         for index in range(len(chart)):
             if not chart[index]:
                 continue
-            res = [item for item in rows if item[0] == song['id'] and item[1] == class_song[index] and item[3] == default_user]
+            res = [item for item in rows if item[0] == song['id'] and item[1] == class_song[index] and item[3] == username]
             data.append({
                 'id': song['id'],
                 'title': song['title_localized']['en'],
@@ -165,9 +162,15 @@ def get_chart():
                 'score': res[0][2] if len(res) == 1 else 0,
                 'rating': calcRating(chart[index]['constant'], res[0][2] if len(res) == 1 else 0)
             })
-            
-    data.sort(key=lambda x: x['difficulty'])
-    data = data[::-1][:int(os.getenv('MAX_SONG_LOADED'))][::-1]
+    return data
+
+@app.route('/get_chart', methods=['POST'])
+def get_chart():
+    body = request.get_json(silent=True) or {}
+    data = _build_chart_data(default_user)
+    if not body.get('full'):
+        data.sort(key=lambda x: x['difficulty'])
+        data = data[::-1][:int(os.getenv('MAX_SONG_LOADED'))][::-1]
     return jsonify(data)
 
 @app.route('/update_chart', methods=['POST'])
@@ -338,11 +341,9 @@ def get_max():
 
 @app.route('/export_chart', methods=['POST'])
 def export_chart():
-    if not session.get('username'):
-        return jsonify({'success': False}), 400
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
-    cursor.execute('''SELECT * from songs WHERE username = ?''', (session['username'],))
+    cursor.execute('''SELECT * from songs WHERE username = ?''', (default_user,))
     rows = cursor.fetchall()
     data = []
     for row in rows:
@@ -352,13 +353,11 @@ def export_chart():
             'score': row[2],
         })
     df = pd.DataFrame(data)
-    df.to_csv(os.path.join(curdir, os.path.join(os.getenv('EXPORT_PATH')), f'{session["username"]}_chart_{datetime.date.today()}.csv'), index=False)
+    df.to_csv(os.path.join(curdir, os.path.join(os.getenv('EXPORT_PATH')), f'{default_user}_chart_{datetime.date.today()}.csv'), index=False)
     return jsonify({'success': True}), 200
 
 @app.route('/import_chart', methods=['POST'])
 def import_chart():
-    if not session.get('username'):
-        return jsonify({'success': False}), 400
     data = request.files['file']
     print(Fore.GREEN + f'{data}')
     Fore.WHITE
@@ -372,51 +371,24 @@ def import_chart():
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
     for row in data:
-        cursor.execute('''INSERT OR REPLACE INTO songs VALUES (?, ?, ?, ?)''', (row.get('id'), row.get('class'), row.get('score'), session['username']))
+        cursor.execute('''INSERT OR REPLACE INTO songs VALUES (?, ?, ?, ?)''', (row.get('id'), row.get('class'), row.get('score'), default_user))
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
 
 @app.route('/apply_sorter', methods=['POST'])
 def apply_sorter():
-    if not session.get('username'):
-        return jsonify({'success': False}), 400
     sorter = request.get_json()
     print(Fore.GREEN + f'{sorter}')
     Fore.WHITE
-    conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
-    cursor = conn.cursor()
-    rows = []
-    conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
-    cursor = conn.cursor()
-    cursor.execute('''SELECT * from songs WHERE username = ?''', (session['username'],))
-    rows = cursor.fetchall()
-    conn.close()
-    data = []
-    for song in songlist['songs']:
-        if song['id'] not in chartconstant:
-            continue
-        chart = chartconstant[song['id']]
-        for index in range(len(chart)):
-            if not chart[index]:
-                continue
-            res = [item for item in rows if item[0] == song['id'] and item[1] == class_song[index] and item[3] == session['username']]
-            data.append({
-                'id': song['id'],
-                'title': song['title_localized']['en'],
-                'artist': song['artist'],
-                'difficulty': chart[index]['constant'],
-                'class': class_song[index],
-                'score': res[0][2] if len(res) == 1 else 0,
-                'rating': calcRating(chart[index]['constant'], res[0][2] if len(res) == 1 else 0)
-            })
+    data = _build_chart_data(default_user)
     data = [
-        song for song in data 
-        if song['difficulty'] >= float(sorter['minDifficulty']) 
+        song for song in data
+        if song['difficulty'] >= float(sorter['minDifficulty'])
         and song['difficulty'] <= float(sorter['maxDifficulty'])
         and sorter['classes'][song['class']]
     ]
-    match sorter['sorter']:
+    match sorter.get('sorter'):
         case 'byDifficulty':
             data.sort(key=lambda x: x['difficulty'])
         case 'byRating':

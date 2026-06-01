@@ -10,107 +10,49 @@
 <link rel="icon" href="../favicon.ico">
 <style>
     body {
-        height: 100vh;
-        margin: 0px;
-        padding: 0px;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
         background-image: url('/assets/others/bg.jpg');
         background-size: contain;
         color: white;
     }
     main {
         position: absolute;
-        top: 0px;
+        top: 0;
+        left: 0;
         width: 100%;
-        height: 100%;
+        min-height: 100%;
+        padding-bottom: 72px;
+        box-sizing: border-box;
+        overflow-y: auto;
     }
-    main .songsTable {
-        position: relative;
+    .scores-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
         width: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-    main .sortersTable {
-        position: relative;
-        width: 100%;
-        margin-top: 100px;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-    main table th {
-        padding: 15px;
-        margin: 0px;
-    }
-    main table tr{
-        margin: 0px;
-        /* display: flex;
-        flex-direction: row; */
-        align-items: center;
-    }
-    main table th {
-        padding: 10px;
-    }
-    main table input {
-        padding: 5px;
-        width: 100px;
-        border-radius: 6px;
-    }
-    footer {
-        position: fixed;
-        bottom: 0px;
-        width: 100%;
+        margin-top: 72px;
+        padding: 12px 16px;
+        box-sizing: border-box;
+        background-color: rgba(0, 0, 0, 0.85);
         display: flex;
-        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-start;
         justify-content: center;
-        padding: 10px;
-        background-color: rgba(0, 0, 0, 0.5);
     }
-    footer button {
-        margin: 0px 10px;
-        padding: 5px 10px;
-        border-radius: 6px;
-        background-color: rgb(18, 8, 65);
-        color: white;
-        cursor: pointer;
-        transition: ease background-color 0.3s;
-        font-weight: 700;
+    .scores-toolbar .sorter,
+    .scores-toolbar .classSelector,
+    .scores-toolbar #difficultyrange {
+        flex: 1 1 220px;
+        max-width: 420px;
     }
-    footer button:hover {
-        background-color: rgb(122, 99, 204);
+    .scores-toolbar h4 {
+        margin: 0 0 7px;
     }
-    select {
-        padding: 3px;
-        color: white;
-        font-weight: 700;
-        font-size:medium;
-        border-radius: 10px;
-        cursor: pointer;
-        background-color: rgba(0, 0, 0, 0.5);
-        transition: ease background-color 0.3s;
-    }
-    select:hover {
-        background-color: rgb(122, 99, 204);
-    }
-    select option {
-        cursor: pointer;
-        font-weight: 700;
-        background-color: rgb(122, 99, 204)
-    }
-    .sortersTable button{
-        margin: 0px 10px;
-        padding: 5px 10px;
-        border-radius: 6px;
-        background-color: rgb(55, 43, 108);
-        color: white;
-        cursor: pointer;
-        transition: ease background-color 0.3s;
-        font-weight: 700;
-    }
-    .sortersTable button:hover{
-        background-color: rgb(122, 99, 204);
-    }
-    #difficultyrange p{
+    #difficultyrange p {
         margin: 2px;
-    }
-    #difficultyrange input{
-        margin: 5px;
     }
     #difficultyrange input[type=range] {
         -webkit-appearance: none;
@@ -120,11 +62,9 @@
         background: rgb(122, 99, 204);
         border-radius: 5px;
         outline: none;
-        opacity: 1;
-        transition: opacity 0.2s;
         cursor: pointer;
     }
-    input[type=range]::-webkit-slider-thumb {
+    #difficultyrange input[type=range]::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
         width: 20px;
@@ -133,106 +73,184 @@
         background: white;
         cursor: pointer;
     }
-    input[type=range]:hover {
-        opacity: 1;
+    select {
+        padding: 3px;
+        color: white;
+        font-weight: 700;
+        font-size: medium;
+        border-radius: 10px;
+        cursor: pointer;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+    select option {
+        font-weight: 700;
+        background-color: rgb(122, 99, 204);
     }
     .classSelector {
         display: flex;
         flex-direction: column;
         align-items: center;
     }
-    .sorter h4{
-        margin: 0px;
-        margin-bottom: 7px;
-    }
-    .classSelector h4{
-        margin: 0px;
-        margin-bottom: 5px;
-    }
     .classes {
         display: flex;
         flex-direction: row;
-        width: 100%;
+        flex-wrap: wrap;
         justify-content: center;
+        gap: 4px;
     }
-    .classes span{
-        margin: 0px;
-        padding: 3px;
+    .classes span {
+        padding: 3px 6px;
         border-radius: 5px;
         font-size: small;
         cursor: pointer;
-        margin-left: 3px;
-        margin-right: 3px;
     }
-    .toggle-sorter i{
-        cursor: pointer;
-        color: #7a7c7e;
-        font-weight: 900;
-        font-size: larger;
-        transition: ease color 0.3s;
+    .scores-board {
+        width: 100%;
+        padding: 8px 12px 24px;
+        box-sizing: border-box;
+        background-color: rgba(0, 0, 0, 0.45);
     }
-    .toggle-sorter i:hover {
-        scale: 1.2;
+    .constant-section {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .constant-label {
+        flex: 0 0 52px;
+        width: 52px;
+        padding-top: 28px;
+        font-size: 22px;
+        font-weight: 700;
+        text-align: center;
+        color: rgb(240, 240, 240);
+        font-family: 'Courier New', Courier, monospace;
+    }
+    .constant-cards {
+        flex: 1;
+        min-width: 0;
+    }
+    .cards-row {
+        display: grid;
+        grid-template-columns: repeat(15, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .score-card {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        box-sizing: border-box;
+        min-width: 0;
+        padding: 6px;
+        background: rgba(0, 0, 0, 0.65);
+        border: 6px solid #B056FF;
+        border-radius: 4px;
+        color: rgb(220, 220, 220);
+    }
+    .score-card-name {
+        font-size: 14.3px;
+        line-height: 1.25;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+    }
+    .score-card-cover {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+        border-radius: 0;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .score-card-input {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 4px;
+        padding: 4px 2px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(0, 0, 0, 0.5);
         color: white;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+    }
+    .score-card-pt {
+        font-size: 15.6px;
+        text-align: center;
+        line-height: 1.35;
+    }
+    footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.85);
+        z-index: 30;
+    }
+    footer button {
+        margin: 0 10px;
+        padding: 5px 10px;
+        border-radius: 6px;
+        background-color: rgb(18, 8, 65);
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+    }
+    footer button:hover {
+        background-color: rgb(122, 99, 204);
     }
 </style>
 <body>
     <header></header>
     <div class="sidebar"></div>
     <main>
-        <table class="sortersTable">
-            <tr>
-                <th class="sorter">
-                    <h4>排序方式</h4>
-                    <select name="sorter" id="sorter" onchange="apply_sorter();">
-                        <option value="byDifficulty">按歌曲定数排序</option>
-                        <option value="byRating">按歌曲游玩潜力值排序</option>
-                        <option value="byName">按曲名排序</option>
-                        <option value="byArtist">按曲师排序</option>
-                    </select>
-                </th>
-                <th>
-                    <div class="classSelector">
-                        <h4>筛选难度</h4>
-                        <div class="classes">
-                            <span id="Past" style="background: linear-gradient(to right, #0077ff, #379fd7);" onclick="select_class(this.id); apply_sorter();">Past <i class="fa fa-check"></i></span>
-                            <span id="Present" style="background: linear-gradient(to right, #01b73a, #2e7562);" onclick="select_class(this.id); apply_sorter();">Present <i class="fa fa-check"></i></span>
-                            <span id="Future" style="background: linear-gradient(to right, #B056FF, #72488f);" onclick="select_class(this.id); apply_sorter();">Future <i class="fa fa-check"></i></span>
-                            <span id="Beyond" style="background: linear-gradient(to right, #db004f, #764242);"onclick="select_class(this.id); apply_sorter();">Beyond <i class="fa fa-check"></i></span>
-                            <span id="Eternal" style="background: linear-gradient(to right, #5f63ff, #6961a2);"onclick="select_class(this.id); apply_sorter();">Eternal <i class="fa fa-check"></i></span>
-                        </div>
+        <div class="scores-toolbar">
+            <div class="sorter">
+                <h4>排序方式</h4>
+                <select name="sorter" id="sorter" onchange="apply_sorter();">
+                    <option value="byDifficulty">按歌曲定数排序</option>
+                    <option value="byRating">按歌曲游玩潜力值排序</option>
+                    <option value="byName">按曲名排序</option>
+                    <option value="byArtist">按曲师排序</option>
+                </select>
+            </div>
+            <div class="classSelector">
+                <h4>筛选难度</h4>
+                <div class="classes">
+                    <span id="Past" style="background: linear-gradient(to right, #0077ff, #379fd7);" onclick="select_class(this.id); apply_sorter();">Past <i class="fa fa-check"></i></span>
+                    <span id="Present" style="background: linear-gradient(to right, #01b73a, #2e7562);" onclick="select_class(this.id); apply_sorter();">Present <i class="fa fa-check"></i></span>
+                    <span id="Future" style="background: linear-gradient(to right, #B056FF, #72488f);" onclick="select_class(this.id); apply_sorter();">Future <i class="fa fa-check"></i></span>
+                    <span id="Beyond" style="background: linear-gradient(to right, #db004f, #764242);" onclick="select_class(this.id); apply_sorter();">Beyond <i class="fa fa-check"></i></span>
+                    <span id="Eternal" style="background: linear-gradient(to right, #5f63ff, #6961a2);" onclick="select_class(this.id); apply_sorter();">Eternal <i class="fa fa-check"></i></span>
+                </div>
+            </div>
+            <div id="difficultyrange">
+                <p>筛选定数范围</p>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="display: flex; flex-direction: row; align-items: center; width: 100%; max-width: 280px;">
+                        <p>从</p>
+                        <input type="range" min="1.5" max="12.0" value="1.5" step="0.1" id="startRange" oninput="get_difficulty(this.value, 'minDifficulty');" onchange="apply_sorter();">
+                        <p id="minDifficulty">1.5</p>
                     </div>
-                </th>
-            </tr>
-            <tr>
-                <th id="difficultyrange" colspan="2">
-                    <p>筛选定数范围</p>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="display: flex; flex-direction: row; align-items: center; width: 65%;">
-                            <p>从</p>
-                            <input type="range" min="1.5" max="12.0" value="1.5" step="0.1" id="startRange" oninput="get_difficulty(this.value, 'minDifficulty');" onchange="apply_sorter();">
-                            <p id="minDifficulty">1.5</p>
-                        </div>
-                        <div style="display: flex; flex-direction: row; align-items: center; width: 65%;">
-                            <p>到</p>
-                            <input type="range" min="1.5" max="12.0" value="12.0" step="0.1" id="endRange" oninput="get_difficulty(this.value, 'maxDifficulty');" onchange="apply_sorter();">
-                            <p id="maxDifficulty">12.0</p>
-                        </div>
+                    <div style="display: flex; flex-direction: row; align-items: center; width: 100%; max-width: 280px;">
+                        <p>到</p>
+                        <input type="range" min="1.5" max="12.0" value="12.0" step="0.1" id="endRange" oninput="get_difficulty(this.value, 'maxDifficulty');" onchange="apply_sorter();">
+                        <p id="maxDifficulty">12.0</p>
                     </div>
-                </th>
-            </tr>
-        </table>
-        <table class="songsTable">
-            <tr id="table-header">
-                <th>id</th>
-                <th>曲名</th>
-                <th>曲师</th>
-                <th>分类</th>
-                <th>定数</th>
-                <th>分数</th>
-                <th>游玩潜力值</th>
-            </tr>
-        </table>
+                </div>
+            </div>
+        </div>
+        <div id="scores-board" class="scores-board"></div>
     </main>
     <footer>
         <button onclick="export_chart()">备份成绩 <i class="fa fa-clock-o"></i></button>
