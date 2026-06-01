@@ -17,6 +17,29 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 init(autoreset=True)
 curdir = os.path.dirname(os.path.abspath(__file__))
+# Default user for sessions (used after removing authentication)
+# Determine default user: use environment variable if set,
+# otherwise fall back to the first existing username in the database
+def _resolve_default_user():
+    env_user = os.getenv('DEFAULT_USER')
+    if env_user:
+        return env_user
+    # Try to fetch an existing username from the Songs table
+    db_path = os.path.join(curdir, os.getenv('DB_PATH'))
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT DISTINCT username FROM songs LIMIT 1')
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[0]:
+            return row[0]
+    except Exception:
+        pass
+    # Fallback default
+    return 'default_user'
+
+default_user = _resolve_default_user()
 chartconstant = {}
 songlist = {}
 class_song = [
@@ -57,9 +80,8 @@ def calcRating(difficulty, score):
 
 @app.route('/')
 def index():
-    if session.get('username'):
-        return redirect('/scores')
-    return send_from_directory(os.path.join(curdir, 'public'),'index.html')
+    # Redirect to the scores management page (default user)
+    return redirect('/scores')
 
 @app.route('/<path:path>')
 def route(path):
@@ -95,21 +117,7 @@ def templates(file):
         Fore.WHITE
         return None
     
-@app.route('/login', methods=['POST'])
-def login():
-    conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
-    cursor = conn.cursor()
-    username = request.form['username']
-    password = request.form['password']
-    cursor.execute('''SELECT * from users WHERE username = ?''', (username,))
-    rows = cursor.fetchall()
-    if len(rows) == 0:
-        return redirect('/')
-    if hash(password) == rows[0][2]:
-        session['username'] = username
-        return redirect('/scores')
-    else:
-        return redirect('/')
+# Login endpoint removed – authentication disabled.
     
 @app.route('/assets/<path:file>')
 def serve_asset(file):
@@ -123,48 +131,19 @@ def serve_asset(file):
 def serve_favicon():
     return send_from_directory('./','favicon.ico')
 
-@app.route('/register', methods=['POST'])
-def register():
-    conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
-    cursor = conn.cursor()
-    username = request.form['username']
-    password = request.form['password']
-    confirm_password = request.form['confirm-password']
-    if password != confirm_password:
-        print(Fore.RED + f'Error: Passwords do not match')
-        Fore.WHITE
-        return jsonify({'message': "Passwords do not match"})
-    
-    cursor.execute('''SELECT * from users WHERE username = ?''', (username,))
-    rows = cursor.fetchall()
-    if len(rows) == 0:
-        cursor.execute('''INSERT INTO users(username, password) VALUES (?, ?)''', (username, hash(password)))
-        conn.commit()
-        session['username'] = username
-        return redirect('/scores')
-    
-    print(Fore.RED + f'Error: {username} already exists')
-    Fore.WHITE
-    return jsonify({'message': "Username already exists"})
+# Registration endpoint removed – user management disabled.
 
-@app.route('/username', methods=['GET'])
-def get_username():
-    if session.get('username'):
-        return jsonify({'username': session['username']})
-    else:
-        return jsonify({'username': 'null'})
+# Username endpoint removed – authentication disabled.
 
 @app.route('/get_chart', methods=['POST'])
 def get_chart():
     rows = []
-    if session.get('username'):
-        conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
-        cursor = conn.cursor()
-        cursor.execute('''SELECT * from songs WHERE username = ?''', (session['username'],))
-        rows = cursor.fetchall()
-        conn.close()
-    else:
-        return jsonify({'success': False}), 400
+    # Use default user since authentication is removed
+    conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
+    cursor = conn.cursor()
+    cursor.execute('''SELECT * from songs WHERE username = ?''', (default_user,))
+    rows = cursor.fetchall()
+    conn.close()
     data = []
     for song in songlist['songs']:
         if song['id'] not in chartconstant:
@@ -173,7 +152,7 @@ def get_chart():
         for index in range(len(chart)):
             if not chart[index]:
                 continue
-            res = [item for item in rows if item[0] == song['id'] and item[1] == class_song[index] and item[3] == session['username']]
+            res = [item for item in rows if item[0] == song['id'] and item[1] == class_song[index] and item[3] == default_user]
             data.append({
                 'id': song['id'],
                 'title': song['title_localized']['en'],
@@ -190,8 +169,7 @@ def get_chart():
 
 @app.route('/update_chart', methods=['POST'])
 def update_chart():
-    if not session.get('username'):
-        return jsonify({'success': False}), 400
+    # Update chart for the default user (authentication removed)
     data = request.get_json()
     if data.get('score') == '':
         data['score'] = 0
@@ -201,8 +179,8 @@ def update_chart():
     cursor = conn.cursor()
     cursor.execute('''
         INSERT OR REPLACE INTO songs VALUES (?, ?, ?, ?);
-        ''', 
-        (data.get('id'), data.get('class'), data.get('score'), session['username'])
+        ''',
+        (data.get('id'), data.get('class'), data.get('score'), default_user)
     )
     conn.commit()
     conn.close()
@@ -211,11 +189,10 @@ def update_chart():
 
 @app.route('/get_bests', methods=['GET'])
 def get_bests():
-    if not session.get('username'):
-        return jsonify({'success': False}), 400
+    # Retrieve best charts for the default user
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
-    cursor.execute('''SELECT * from songs WHERE username = ?''', (session['username'],))
+    cursor.execute('''SELECT * from songs WHERE username = ?''', (default_user,))
     rows = cursor.fetchall()
     data = []
     for row in rows:
@@ -233,23 +210,22 @@ def get_bests():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    if not session.get('username'):
-        return jsonify({'success': False}), 400
     data = request.get_json()
+    # id == 0 : random recommendation
     if data.get('id') == 0:
         df = pd.read_csv(os.path.join(curdir, os.getenv('RECOMMEND_PATH')))
         df = df.to_numpy().flatten().tolist()
         return jsonify({'message': df[random.randint(0, len(df)-1)]})
+    # id == 1 : recommend based on user charts (default_user)
     elif data.get('id') == 1:
-        if not session.get('username'):
-            return jsonify({'success': False}), 400
         conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
         cursor = conn.cursor()
-        cursor.execute('''SELECT * from songs WHERE username = ?''', (session['username'],))
+        cursor.execute('''SELECT * from songs WHERE username = ?''', (default_user,))
         rows = cursor.fetchall()
-        data = []
+        conn.close()
+        data_list = []
         for row in rows:
-            data.append({
+            data_list.append({
                 'id': row[0],
                 'name': next(song for song in songlist['songs'] if song['id'] == row[0])['title_localized']['en'],
                 'class': row[1],
@@ -257,13 +233,13 @@ def chat():
                 'score': row[2],
                 'rating': round(calcRating(chartconstant[row[0]][class2num[row[1]]]['constant'], row[2]), 3)
             })
-        data.sort(key=lambda x: x['rating'], reverse=True)
-        conn.close()
-        if len(data) < 40:
+        data_list.sort(key=lambda x: x['rating'], reverse=True)
+        if len(data_list) < 40:
             return jsonify({'message': "歌都没打几首，急着推分作甚？"})
         else:
-            id = random.randint(30, 39)
-            return jsonify({'message': f"推荐这首{data[id]['name']}！目前的得分为{int(data[id]['score'])}，不过不要强推，小心手癖！"})
+            idx = random.randint(30, 39)
+            return jsonify({'message': f"推荐这首{data_list[idx]['name']}！目前的得分为{int(data_list[idx]['score'])}，不过不要强推，小心手癖！"})
+    # id == 2 : random bible quote
     elif data.get('id') == 2:
         df = pd.read_csv(os.path.join(curdir, os.getenv('BIBLE_PATH')))
         df = df.to_numpy().flatten().tolist()
@@ -271,19 +247,14 @@ def chat():
     else:
         return jsonify({'message': "爆！"})
 
-@app.route('/logout', methods=['POST'])
-def logout():
-    if session.get('username'):
-        session.pop('username', None)
-    return redirect('/')
+# Logout endpoint removed – authentication disabled.
 
 @app.route('/get_avatar', methods=['GET'])
 def get_avatar():
-    if not session.get('username'):
-        return jsonify({'avatar': 'default.png'}), 400
+    # Return avatar for the default user (no authentication)
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
-    cursor.execute('''SELECT * from custom WHERE username = ?''', (session['username'],))
+    cursor.execute('''SELECT * from custom WHERE username = ?''', (default_user,))
     rows = cursor.fetchall()
     if len(rows) == 0:
         conn.close()
