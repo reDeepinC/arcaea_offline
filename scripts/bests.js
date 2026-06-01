@@ -6,8 +6,8 @@ const CLASS_BORDER = {
     Past: '#0077ff',
     Present: '#01b73a',
     Future: '#B056FF',
-    Beyond: '#db004f',
-    Eternal: '#5f63ff',
+    Beyond: '#8b1a3a',
+    Eternal: '#4a6b80',
 };
 
 function formatScore(score) {

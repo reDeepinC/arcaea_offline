@@ -33,11 +33,11 @@ document.querySelector('.username').textContent = "Lacrymira";
                         break;
                     }
                     case "Beyond":{
-                        div1.style.background = `linear-gradient(to right, #db004f, #000000)`;
+                        div1.style.background = `linear-gradient(to right, #8b1a3a, #000000)`;
                         break;
                     }
                     case "Eternal":{
-                        div1.style.background = `linear-gradient(to right, #5f63ff, #000000)`;
+                        div1.style.background = `linear-gradient(to right, #4a6b80, #000000)`;
                         break;
                     }
                     default:{

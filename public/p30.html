@@ -14,7 +14,9 @@
         margin: 0px;
         padding: 0px;
         background-image: url('/assets/others/bg.jpg');
-        background-size: contain;
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
         color: white;
     }
     main {
@@ -142,8 +144,8 @@ SEARCH
         "Past":"#0077ff",
         "Present":"#01b73a",
         "Future":"#B056FF",
-        "Beyond":"#db004f",
-        "Eternal":"#5f63ff"
+        "Beyond":"#8b1a3a",
+        "Eternal":"#4a6b80"
     };
     const col = colorMap[data[i].class]||"#B056FF";
     return col;
@@ -153,8 +155,8 @@ SEARCH
             "Past":"linear-gradient(to right, #0077ff, #000000)",
             "Present":"linear-gradient(to right, #01b73a, #000000)",
             "Future":"linear-gradient(to right, #B056FF, #000000)",
-            "Beyond":"linear-gradient(to right, #db004f, #000000)",
-            "Eternal":"linear-gradient(to right, #5f63ff, #000000)"
+            "Beyond":"linear-gradient(to right, #8b1a3a, #000000)",
+            "Eternal":"linear-gradient(to right, #4a6b80, #000000)"
         };
         return bgMap[data[i].class]||"linear-gradient(to right, #B056FF, #000000)";
     }};">#${i+1} ${data[i].name}</div>

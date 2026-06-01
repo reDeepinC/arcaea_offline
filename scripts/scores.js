@@ -5,8 +5,8 @@ const CLASS_BORDER = {
     Past: '#0077ff',
     Present: '#01b73a',
     Future: '#B056FF',
-    Beyond: '#db004f',
-    Eternal: '#5f63ff',
+    Beyond: '#8b1a3a',
+    Eternal: '#4a6b80',
 };
 
 function calcptt(difficulty, score) {
@@ -37,7 +37,7 @@ function getFilterBounds() {
     };
 }
 
-function createScoreCard(entry, onScoreSaved) {
+function createScoreCard(entry, onScoreSaved, rank) {
     const card = document.createElement('div');
     card.className = 'score-card';
     card.style.borderColor = CLASS_BORDER[entry.class] || CLASS_BORDER.Future;
@@ -59,9 +59,29 @@ function createScoreCard(entry, onScoreSaved) {
     scoreInput.step = '1';
     scoreInput.value = entry.score || 0;
 
+    const rankEl = document.createElement('div');
+    rankEl.className = 'score-card-rank';
+    if (entry.score && entry.score != 0 && rank) {
+        rankEl.textContent = `#${rank}`;
+    } else {
+        rankEl.textContent = '-';
+    }
+
     const ptEl = document.createElement('div');
     ptEl.className = 'score-card-pt';
     ptEl.textContent = calcptt(entry.difficulty, entry.score).toFixed(3);
+
+    const RANK_COLOR_DARK_CYAN = '#00CED1';
+    const RANK_COLOR_LIGHT_PURPLE = '#D8B4FF';
+    if (rank && rank <= 30) {
+        card.style.background = 'rgba(0, 206, 209, 0.4)';
+        rankEl.style.color = RANK_COLOR_DARK_CYAN;
+        ptEl.style.color = RANK_COLOR_DARK_CYAN;
+    } else if (rank && rank <= 60) {
+        card.style.background = 'rgba(216, 180, 255, 0.4)';
+        rankEl.style.color = RANK_COLOR_LIGHT_PURPLE;
+        ptEl.style.color = RANK_COLOR_LIGHT_PURPLE;
+    }
 
     scoreInput.addEventListener('change', function () {
         const score = this.value;
@@ -81,8 +101,25 @@ function createScoreCard(entry, onScoreSaved) {
             .catch((error) => console.log(error));
     });
 
-    card.append(name, img, scoreInput, ptEl);
+    if (entry.difficulty >= 11.0) {
+        card.style.position = 'relative';
+        const badge = document.createElement('div');
+        badge.textContent = entry.difficulty.toFixed(1);
+        badge.style.cssText = 'position:absolute;top:2px;left:2px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.85);background:rgba(0,0,0,0.55);padding:1px 4px;border-radius:3px;z-index:1;line-height:1.4;pointer-events:none;';
+        card.appendChild(badge);
+    }
+
+    card.append(name, img, scoreInput, rankEl, ptEl);
     return card;
+}
+
+function autoFitFontSize(el) {
+    el.style.fontSize = '14.3px';
+    if (el.scrollHeight <= el.clientHeight) return;
+    for (let size = 14; size >= 7; size -= 0.5) {
+        el.style.fontSize = size + 'px';
+        if (el.scrollHeight <= el.clientHeight) break;
+    }
 }
 
 function groupByConstant(data) {
@@ -97,6 +134,40 @@ function groupByConstant(data) {
     return groups;
 }
 
+function renderSection(labelText, tierEntries, rankMap, rerender, cardsWrap) {
+    const label = document.createElement('div');
+    label.className = 'constant-label';
+    label.textContent = labelText;
+    const wrap = cardsWrap || document.createElement('div');
+    wrap.className = 'constant-cards';
+
+    const flatSongs = [];
+    for (const { songs } of tierEntries) {
+        for (const song of songs) {
+            flatSongs.push(song);
+        }
+    }
+
+    for (let i = 0; i < flatSongs.length; i += CARDS_PER_ROW) {
+        const row = document.createElement('div');
+        row.className = 'cards-row';
+        flatSongs.slice(i, i + CARDS_PER_ROW).forEach((entry) => {
+            const rank = rankMap.get(`${entry.id}_${entry.class}`);
+                const card = createScoreCard(entry, rerender, rank);
+                row.appendChild(card);
+            });
+        wrap.appendChild(row);
+    }
+
+    if (!cardsWrap) {
+        const section = document.createElement('div');
+        section.className = 'constant-section';
+        section.append(label, wrap);
+        return section;
+    }
+    return { label, wrap };
+}
+
 function renderScoresBoard(data) {
     const board = document.getElementById('scores-board');
     board.innerHTML = '';
@@ -105,41 +176,43 @@ function renderScoresBoard(data) {
 
     const rerender = () => renderScoresBoard(data);
 
+    const ranked = [...data].sort((a, b) => Number(b.rating) - Number(a.rating));
+    const rankMap = new Map();
+    ranked.forEach((entry, idx) => {
+        rankMap.set(`${entry.id}_${entry.class}`, idx + 1);
+    });
+
+    const MERGE_THRESHOLD = 11.0;
+    const mergedTiers = [];
+    const regularTiers = [];
+
     for (let tier = Math.round(MAX_CONSTANT_TIER * 10); tier >= Math.round(min * 10); tier--) {
         const constant = tier / 10;
-        if (constant > max + 0.001) {
-            continue;
-        }
+        if (constant > max + 0.001) continue;
         const key = constant.toFixed(1);
         const songs = groups.get(key);
-        if (!songs || songs.length === 0) {
-            continue;
-        }
+        if (!songs || songs.length === 0) continue;
         songs.sort((a, b) => Number(b.score) - Number(a.score));
+        (constant >= MERGE_THRESHOLD ? mergedTiers : regularTiers).push({ key, songs });
+    }
 
+    if (mergedTiers.length > 0) {
+        const wrap = document.createElement('div');
+        wrap.className = 'constant-cards';
+        const { label } = renderSection('11.0+', mergedTiers, rankMap, rerender, wrap);
         const section = document.createElement('div');
         section.className = 'constant-section';
-
-        const label = document.createElement('div');
-        label.className = 'constant-label';
-        label.textContent = key;
-
-        const cardsWrap = document.createElement('div');
-        cardsWrap.className = 'constant-cards';
-
-        for (let i = 0; i < songs.length; i += CARDS_PER_ROW) {
-            const row = document.createElement('div');
-            row.className = 'cards-row';
-            songs.slice(i, i + CARDS_PER_ROW).forEach((entry) => {
-                row.appendChild(createScoreCard(entry, rerender));
-            });
-            cardsWrap.appendChild(row);
-        }
-
-        section.append(label, cardsWrap);
+        section.append(label, wrap);
         board.appendChild(section);
     }
 
+    for (const entry of regularTiers) {
+        board.appendChild(renderSection(entry.key, [entry], rankMap, rerender));
+    }
+
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.score-card-name').forEach(autoFitFontSize);
+    });
     bindScoreInputNavigation();
 }
 

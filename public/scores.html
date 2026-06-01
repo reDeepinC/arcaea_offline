@@ -14,7 +14,9 @@
         margin: 0;
         padding: 0;
         background-image: url('/assets/others/bg.jpg');
-        background-size: contain;
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
         color: white;
     }
     main {
@@ -156,9 +158,8 @@
         line-height: 1.25;
         margin-bottom: 4px;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
         text-align: center;
+        height: 36px;
     }
     .score-card-cover {
         width: 100%;
@@ -180,6 +181,12 @@
         font-size: 14px;
         font-weight: 600;
         text-align: center;
+    }
+    .score-card-rank {
+        font-size: 15.6px;
+        text-align: center;
+        line-height: 1.35;
+        font-weight: 700;
     }
     .score-card-pt {
         font-size: 15.6px;
@@ -230,8 +237,8 @@
                     <span id="Past" style="background: linear-gradient(to right, #0077ff, #379fd7);" onclick="select_class(this.id); apply_sorter();">Past <i class="fa fa-check"></i></span>
                     <span id="Present" style="background: linear-gradient(to right, #01b73a, #2e7562);" onclick="select_class(this.id); apply_sorter();">Present <i class="fa fa-check"></i></span>
                     <span id="Future" style="background: linear-gradient(to right, #B056FF, #72488f);" onclick="select_class(this.id); apply_sorter();">Future <i class="fa fa-check"></i></span>
-                    <span id="Beyond" style="background: linear-gradient(to right, #db004f, #764242);" onclick="select_class(this.id); apply_sorter();">Beyond <i class="fa fa-check"></i></span>
-                    <span id="Eternal" style="background: linear-gradient(to right, #5f63ff, #6961a2);" onclick="select_class(this.id); apply_sorter();">Eternal <i class="fa fa-check"></i></span>
+                    <span id="Beyond" style="background: linear-gradient(to right, #8b1a3a, #5a2530);" onclick="select_class(this.id); apply_sorter();">Beyond <i class="fa fa-check"></i></span>
+                    <span id="Eternal" style="background: linear-gradient(to right, #4a6b80, #3a5565);" onclick="select_class(this.id); apply_sorter();">Eternal <i class="fa fa-check"></i></span>
                 </div>
             </div>
             <div id="difficultyrange">
