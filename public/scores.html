@@ -182,16 +182,56 @@
         font-weight: 600;
         text-align: center;
     }
-    .score-card-rank {
-        font-size: 15.6px;
-        text-align: center;
+    .score-card-info-row {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
         line-height: 1.35;
+    }
+    .score-card-rank {
         font-weight: 700;
     }
     .score-card-pt {
-        font-size: 15.6px;
-        text-align: center;
+    }
+    .score-card-info-row-2 {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
         line-height: 1.35;
+        margin-top: 2px;
+    }
+    .score-card-days {
+        color: rgba(255, 255, 255, 0.6);
+    }
+    .score-card-play {
+        color: rgba(255, 255, 255, 0.6);
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .score-card-plus-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: transparent;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        transition: ease background 0.15s;
+    }
+    .score-card-plus-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
     }
     footer {
         position: fixed;
@@ -246,8 +286,8 @@
                 <div style="display: flex; flex-direction: column; align-items: center;">
                     <div style="display: flex; flex-direction: row; align-items: center; width: 100%; max-width: 280px;">
                         <p>从</p>
-                        <input type="range" min="1.5" max="12.0" value="1.5" step="0.1" id="startRange" oninput="get_difficulty(this.value, 'minDifficulty');" onchange="apply_sorter();">
-                        <p id="minDifficulty">1.5</p>
+                        <input type="range" min="1.5" max="12.0" value="10.0" step="0.1" id="startRange" oninput="get_difficulty(this.value, 'minDifficulty');" onchange="apply_sorter();">
+                        <p id="minDifficulty">10.0</p>
                     </div>
                     <div style="display: flex; flex-direction: row; align-items: center; width: 100%; max-width: 280px;">
                         <p>到</p>

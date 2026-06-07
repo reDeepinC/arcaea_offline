@@ -4,13 +4,14 @@ from flask_socketio import *
 import hashlib
 from dotenv import *
 import secrets
-import os
+import os, sys
 from gevent import pywsgi
 import sqlite3
 from colorama import Fore, init
 import pandas as pd
 import numpy as np
 import datetime
+import subprocess, time
 
 load_dotenv()
 app = Flask(__name__)
@@ -65,6 +66,18 @@ with open(os.path.join(curdir, os.getenv('SONGLIST_PATH'))) as file:
 
 with open(os.path.join(curdir, os.getenv('CHARTCONSTANT_PATH'))) as file:
     chartconstant = json.load(file)
+
+_migrate_conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
+_migrate_cur = _migrate_conn.cursor()
+for _col in ['play_count INTEGER DEFAULT 0', 'last_updated TEXT']:
+    try:
+        _migrate_cur.execute(f'''ALTER TABLE songs ADD COLUMN {_col}''')
+    except:
+        pass
+_migrate_cur.execute('''UPDATE songs SET play_count = 0 WHERE play_count IS NULL''')
+_migrate_cur.execute('''UPDATE songs SET last_updated = '2026-06-01' WHERE last_updated IS NULL''')
+_migrate_conn.commit()
+_migrate_conn.close()
 
 def hash(password):
     sha256 = hashlib.sha256()
@@ -153,14 +166,17 @@ def _build_chart_data(username):
             if not chart[index]:
                 continue
             res = [item for item in rows if item[0] == song['id'] and item[1] == class_song[index] and item[3] == username]
+            r = res[0] if len(res) == 1 else None
             data.append({
                 'id': song['id'],
                 'title': song['title_localized']['en'],
                 'artist': song['artist'],
                 'difficulty': chart[index]['constant'],
                 'class': class_song[index],
-                'score': res[0][2] if len(res) == 1 else 0,
-                'rating': calcRating(chart[index]['constant'], res[0][2] if len(res) == 1 else 0)
+                'score': r[2] if r else 0,
+                'rating': calcRating(chart[index]['constant'], r[2] if r else 0),
+                'play_count': r[4] if r and len(r) > 4 else 0,
+                'last_updated': r[5] if r and len(r) > 5 else '2026-06-01'
             })
     return data
 
@@ -176,17 +192,27 @@ def get_chart():
 @app.route('/update_chart', methods=['POST'])
 def update_chart():
     # Update chart for the default user (authentication removed)
-    data = request.get_json()
-    if data.get('score') == '':
-        data['score'] = 0
-    print(Fore.GREEN + f'{data}')
+    body = request.get_json()
+    if body.get('score') == '':
+        body['score'] = 0
+    print(Fore.GREEN + f'{body}')
     Fore.WHITE
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
+    try:
+        cursor.execute('''SELECT score, play_count, last_updated FROM songs WHERE id = ? AND class = ? AND username = ?''',
+                       (body.get('id'), body.get('class'), default_user))
+        existing = cursor.fetchone()
+        play_count = existing[1] if existing else 0
+    except:
+        existing = None
+        play_count = 0
+    last_updated = datetime.date.today().strftime('%Y-%m-%d')
     cursor.execute('''
-        INSERT OR REPLACE INTO songs VALUES (?, ?, ?, ?);
+        INSERT OR REPLACE INTO songs (id, class, score, username, play_count, last_updated)
+        VALUES (?, ?, ?, ?, ?, ?);
         ''',
-        (data.get('id'), data.get('class'), data.get('score'), default_user)
+        (body.get('id'), body.get('class'), body.get('score'), default_user, play_count, last_updated)
     )
     conn.commit()
     conn.close()
@@ -208,7 +234,9 @@ def get_bests():
             'class': row[1],
             'difficulty': chartconstant[row[0]][class2num[row[1]]]['constant'],
             'score': row[2],
-            'rating': round(calcRating(chartconstant[row[0]][class2num[row[1]]]['constant'], row[2]), 3)
+            'rating': round(calcRating(chartconstant[row[0]][class2num[row[1]]]['constant'], row[2]), 3),
+            'play_count': row[4] if len(row) > 4 else 0,
+            'last_updated': row[5] if len(row) > 5 else '2026-06-01'
         })
     data.sort(key=lambda x: x['rating'], reverse=True)
     conn.close()
@@ -217,6 +245,24 @@ def get_bests():
         limit = BESTS_RETURN_LIMIT
     limit = max(1, min(limit, len(data)))
     return jsonify(data[:limit])
+
+@app.route('/increment_play', methods=['POST'])
+def increment_play():
+    body = request.get_json()
+    conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''UPDATE songs SET play_count = play_count + 1 WHERE id = ? AND class = ? AND username = ?''',
+                       (body.get('id'), body.get('class'), default_user))
+        if cursor.rowcount == 0:
+            cursor.execute('''INSERT INTO songs (id, class, score, username, play_count, last_updated)
+                              VALUES (?, ?, 0, ?, 1, ?)''',
+                           (body.get('id'), body.get('class'), default_user, '2026-06-01'))
+        conn.commit()
+    except:
+        pass
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -371,7 +417,8 @@ def import_chart():
     conn = sqlite3.connect(os.path.join(curdir, os.getenv('DB_PATH')))
     cursor = conn.cursor()
     for row in data:
-        cursor.execute('''INSERT OR REPLACE INTO songs VALUES (?, ?, ?, ?)''', (row.get('id'), row.get('class'), row.get('score'), default_user))
+        cursor.execute('''INSERT OR REPLACE INTO songs (id, class, score, username, play_count, last_updated) VALUES (?, ?, ?, ?, 0, ?)''',
+                       (row.get('id'), row.get('class'), row.get('score'), default_user, datetime.date.today().strftime('%Y-%m-%d')))
     conn.commit()
     conn.close()
     return jsonify({'success': True}), 200
@@ -402,15 +449,64 @@ def apply_sorter():
     return jsonify(data)
     
 
+def _find_pid_on_port(port):
+    output = subprocess.check_output('netstat -ano', shell=True, stderr=subprocess.DEVNULL, timeout=5).decode('utf-8', errors='replace')
+    for line in output.splitlines():
+        if f':{port} ' in line and 'LISTENING' in line:
+            parts = line.strip().split()
+            if parts and parts[-1].isdigit():
+                return parts[-1]
+    return None
+
+def _pid_is_python(pid):
+    try:
+        out = subprocess.check_output(f'tasklist /FI "PID eq {pid}" /FO CSV', shell=True, stderr=subprocess.DEVNULL).decode('utf-8', errors='replace')
+        return 'python' in out.lower()
+    except:
+        return False
+
 if __name__ == '__main__':
-    print( '==============================================================================================')
-    print(r'       _____                                               _____  _____.__  .__               ')
-    print(r'      /  _  \_______   ____ _____    ____ _____      _____/ ____\/ ____\  | |__| ____   ____  ')
-    print(r'     /  /_\  \_  __ \_/ ___\\__  \ _/ __ \\__  \    /  _ \   __\\   __\|  | |  |/    \_/ __ \ ')
-    print(r'    /    |    \  | \/\  \___ / __ \\  ___/ / __ \_ (  <_> )  |   |  |  |  |_|  |   |  \  ___/ ') 
-    print(r'    \____|__  /__|    \___  >____  /\___  >____  /  \____/|__|   |__|  |____/__|___|  /\___  >')
-    print(r'            \/            \/     \/     \/     \/                                   \/     \/ ')
-    print( '==============================================================================================')
-    print('ARCAEA OFFLINE IS RUNNING AT http://localhost:5000/')
-    server = pywsgi.WSGIServer(('0.0.0.0', int(os.getenv('PORT'))), app)
-    server.serve_forever()
+    PORT = int(os.getenv('PORT'))
+    LOG_FILE = os.path.join(curdir, 'server.log')
+
+    # If --serve is passed, this is the detached child process; just run the server
+    if '--serve' in sys.argv:
+        print( '==============================================================================================')
+        print(r'       _____                                               _____  _____.__  .__               ')
+        print(r'      /  _  \_______   ____ _____    ____ _____      _____/ ____\/ ____\  | |__| ____   ____  ')
+        print(r'     /  /_\  \_  __ \_/ ___\\__  \ _/ __ \\__  \    /  _ \   __\\   __\|  | |  |/    \_/ __ \ ')
+        print(r'    /    |    \  | \/\  \___ / __ \\  ___/ / __ \_ (  <_> )  |   |  |  |  |_|  |   |  \  ___/ ') 
+        print(r'    \____|__  /__|    \___  >____  /\___  >____  /  \____/|__|   |__|  |____/__|___|  /\___  >')
+        print(r'            \/            \/     \/     \/     \/                                   \/     \/ ')
+        print( '==============================================================================================')
+        print(f'ARCAEA OFFLINE IS RUNNING AT http://localhost:{PORT}/')
+        server = pywsgi.WSGIServer(('0.0.0.0', PORT), app)
+        server.serve_forever()
+
+    # --- Main process: manage port, then launch detached child ---
+
+    pid = _find_pid_on_port(PORT)
+    if pid:
+        if _pid_is_python(pid):
+            answer = input(f'Arcaea Offline is already running (PID: {pid}, port: {PORT}). Replace it? (y/N): ')
+            if answer.lower() == 'y':
+                print('Stopping old process...')
+                subprocess.run(f'taskkill /PID {pid} /F', shell=True, capture_output=True)
+                time.sleep(1)
+            else:
+                print('Keeping existing process. Exiting.')
+                sys.exit(0)
+        else:
+            print(f'Port {PORT} is in use by another program (PID: {pid}). Please free the port and try again.')
+            sys.exit(1)
+
+    log = open(LOG_FILE, 'a')
+    subprocess.Popen(
+        [sys.executable, __file__, '--serve'],
+        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        close_fds=True
+    )
+    print(f'Arcaea Offline server started on port {PORT}.')
+    print(f'Log: {LOG_FILE}')

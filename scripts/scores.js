@@ -37,6 +37,14 @@ function getFilterBounds() {
     };
 }
 
+function calcDaysAgo(dateStr) {
+    if (!dateStr) return '-';
+    const then = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - then) / (1000 * 60 * 60 * 24));
+    return diff + 'd';
+}
+
 function createScoreCard(entry, onScoreSaved, rank) {
     const card = document.createElement('div');
     card.className = 'score-card';
@@ -70,6 +78,43 @@ function createScoreCard(entry, onScoreSaved, rank) {
     const ptEl = document.createElement('div');
     ptEl.className = 'score-card-pt';
     ptEl.textContent = calcptt(entry.difficulty, entry.score).toFixed(3);
+
+    const infoRow1 = document.createElement('div');
+    infoRow1.className = 'score-card-info-row';
+    infoRow1.append(rankEl, ptEl);
+
+    const daysEl = document.createElement('span');
+    daysEl.className = 'score-card-days';
+    daysEl.textContent = calcDaysAgo(entry.last_updated);
+
+    const playCountEl = document.createElement('span');
+    playCountEl.className = 'score-card-play-count';
+    playCountEl.textContent = (entry.play_count || 0) + 'pc';
+
+    const plusBtn = document.createElement('button');
+    plusBtn.className = 'score-card-plus-btn';
+    plusBtn.textContent = '+';
+    plusBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        fetch('/increment_play', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: entry.id, class: entry.class }),
+        })
+            .then(() => {
+                entry.play_count = (entry.play_count || 0) + 1;
+                playCountEl.textContent = entry.play_count + 'pc';
+            })
+            .catch((error) => console.log(error));
+    });
+
+    const playWrap = document.createElement('span');
+    playWrap.className = 'score-card-play';
+    playWrap.append(playCountEl, plusBtn);
+
+    const infoRow2 = document.createElement('div');
+    infoRow2.className = 'score-card-info-row-2';
+    infoRow2.append(daysEl, playWrap);
 
     const RANK_COLOR_DARK_CYAN = '#00CED1';
     const RANK_COLOR_LIGHT_PURPLE = '#D8B4FF';
@@ -109,7 +154,7 @@ function createScoreCard(entry, onScoreSaved, rank) {
         card.appendChild(badge);
     }
 
-    card.append(name, img, scoreInput, rankEl, ptEl);
+    card.append(name, img, scoreInput, infoRow1, infoRow2);
     return card;
 }
 
@@ -199,7 +244,7 @@ function renderScoresBoard(data) {
     if (mergedTiers.length > 0) {
         const wrap = document.createElement('div');
         wrap.className = 'constant-cards';
-        const { label } = renderSection('11.0+', mergedTiers, rankMap, rerender, wrap);
+        const { label } = renderSection('11.+', mergedTiers, rankMap, rerender, wrap);
         const section = document.createElement('div');
         section.className = 'constant-section';
         section.append(label, wrap);
@@ -257,7 +302,6 @@ function export_chart() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
     })
-        .then(() => alert('done : )'))
         .catch((error) => {
             alert('Ops : (');
             console.log(error);
@@ -283,7 +327,6 @@ function import_chart() {
             .then((response) => response.json())
             .then(() => {
                 window.location.reload();
-                alert('done : )');
             })
             .catch((error) => console.log(error));
     });

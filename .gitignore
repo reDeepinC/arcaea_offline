@@ -9,3 +9,4 @@ backup/*
 !backup/.gitkeep
 test
 tmp
+server.log

@@ -19,6 +19,14 @@ function illustrationUrl(id, songClass) {
     return songClass === 'Beyond' ? `${id}_byd` : id;
 }
 
+function calcDaysAgo(dateStr) {
+    if (!dateStr) return '-';
+    const then = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - then) / (1000 * 60 * 60 * 24));
+    return diff + 'd';
+}
+
 function createBestCard(entry, rank) {
     const card = document.createElement('div');
     card.className = 'best-card';
@@ -27,7 +35,7 @@ function createBestCard(entry, rank) {
 
     const name = document.createElement('div');
     name.className = 'best-card-name';
-    name.textContent = `#${rank} ${entry.name}`;
+    name.textContent = entry.name;
 
     const img = document.createElement('img');
     img.className = 'best-card-cover';
@@ -42,11 +50,41 @@ function createBestCard(entry, rank) {
     constantEl.className = 'best-card-constant';
     constantEl.textContent = parseFloat(entry.difficulty).toFixed(1);
 
-    const ptEl = document.createElement('div');
+    const rankEl = document.createElement('span');
+    rankEl.className = 'best-card-rank';
+    rankEl.textContent = `#${rank}`;
+
+    const ptEl = document.createElement('span');
     ptEl.className = 'best-card-pt';
     ptEl.textContent = parseFloat(entry.rating).toFixed(3);
 
-    card.append(name, img, scoreEl, constantEl, ptEl);
+    const infoRow1 = document.createElement('div');
+    infoRow1.className = 'best-card-info-row';
+    infoRow1.append(rankEl, ptEl);
+
+    const daysEl = document.createElement('span');
+    daysEl.className = 'best-card-days';
+    daysEl.textContent = calcDaysAgo(entry.last_updated);
+
+    const playEl = document.createElement('span');
+    playEl.className = 'best-card-play';
+    playEl.textContent = (entry.play_count || 0) + 'pc';
+
+    const infoRow2 = document.createElement('div');
+    infoRow2.className = 'best-card-info-row-2';
+    infoRow2.append(daysEl, playEl);
+
+    const RANK_COLOR_DARK_CYAN = '#00CED1';
+    const RANK_COLOR_LIGHT_PURPLE = '#D8B4FF';
+    if (rank && rank <= 30) {
+        rankEl.style.color = RANK_COLOR_DARK_CYAN;
+        ptEl.style.color = RANK_COLOR_DARK_CYAN;
+    } else if (rank && rank <= 60) {
+        rankEl.style.color = RANK_COLOR_LIGHT_PURPLE;
+        ptEl.style.color = RANK_COLOR_LIGHT_PURPLE;
+    }
+
+    card.append(name, img, scoreEl, constantEl, infoRow1, infoRow2);
     return card;
 }
 
